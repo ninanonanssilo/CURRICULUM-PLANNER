@@ -11,10 +11,34 @@
 <body>
   <div id="toast" class="toast" role="status" aria-live="polite" aria-atomic="true"></div>
 
+  <aside id="sidebar" class="sidebar" aria-label="카테고리">
+    <div class="sideHead">
+      <a class="sideBrand" href="https://edu-tools.pages.dev/" target="_blank" rel="noreferrer" aria-label="Edu Tools로 이동">
+        <span class="brandMark" aria-hidden="true">E</span>
+        <span class="brandText">
+          <span class="brandTitle">Edu Tools</span>
+          <span class="brandSub">업무 자동화 도우미</span>
+        </span>
+      </a>
+      <button id="navClose" class="iconBtn" type="button" aria-label="닫기">×</button>
+    </div>
+    <nav class="sideNav" aria-label="도구 목록">
+      <div class="sideKicker">생성기</div>
+      <a class="sideItem isActive" href="/" aria-current="page">학년 교육과정</a>
+      <a class="sideItem" href="https://educate1.pages.dev/" target="_blank" rel="noreferrer">학교 공문 자동 작성 <span aria-hidden="true">↗</span></a>
+      <a class="sideItem" href="https://money-report.pages.dev/" target="_blank" rel="noreferrer">품의 기안 생성기 <span aria-hidden="true">↗</span></a>
+      <a class="sideItem" href="https://school-letter.pages.dev/" target="_blank" rel="noreferrer">가정통신문 생성기 <span aria-hidden="true">↗</span></a>
+      <a class="sideItem" href="https://class-assignment.pages.dev/" target="_blank" rel="noreferrer">반편성 생성기 <span aria-hidden="true">↗</span></a>
+    </nav>
+    <div class="sideNote">같은 카테고리에서 Edu Tools 서비스를 이동할 수 있게 구성했습니다.</div>
+  </aside>
+  <div id="scrim" class="scrim" aria-hidden="true"></div>
+
   <header class="top">
     <div class="top-inner">
+      <button id="navToggle" class="iconBtn" type="button" aria-label="카테고리 열기" aria-expanded="false">☰</button>
+
       <a class="brand" href="https://edu-tools.pages.dev/" target="_blank" rel="noreferrer">
-        <span class="brandMark" aria-hidden="true">E</span>
         <span class="brandText">
           <span class="brandTitle">Edu Tools</span>
           <span class="brandSub">업무 자동화 도우미</span>
@@ -23,7 +47,8 @@
 
       <div class="hero">
         <h1 class="title">학년 교육과정 문서 자동 생성기</h1>
-        <p class="subtitle">진도표/시수표 데이터를 업로드하면, 교과별 시수 합계와 진도표를 자동으로 정리합니다.</p>
+        <p class="subtitle">이지에듀/스쿨마스터처럼, 진도표/시수표를 한 번에 정리하고 결과를 내려받을 수 있게 도와줍니다.</p>
+        <div class="privacy" role="note"><b>중요:</b> 업로드한 파일은 <b>서버로 전송/저장되지 않고</b> 이 브라우저에서만 처리됩니다.</div>
       </div>
     </div>
   </header>

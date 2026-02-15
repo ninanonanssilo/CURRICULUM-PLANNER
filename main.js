@@ -1,5 +1,29 @@
 const $ = (id) => document.getElementById(id);
 
+// Sidebar nav (category)
+(function initNav(){
+  const sidebar = $("sidebar");
+  const scrim = $("scrim");
+  const btnOpen = $("navToggle");
+  const btnClose = $("navClose");
+  const open = ()=>{
+    sidebar?.classList.add('isOpen');
+    scrim?.classList.add('isOn');
+    btnOpen?.setAttribute('aria-expanded','true');
+    document.body.style.overflow = 'hidden';
+  };
+  const close = ()=>{
+    sidebar?.classList.remove('isOpen');
+    scrim?.classList.remove('isOn');
+    btnOpen?.setAttribute('aria-expanded','false');
+    document.body.style.overflow = '';
+  };
+  btnOpen?.addEventListener('click', open);
+  btnClose?.addEventListener('click', close);
+  scrim?.addEventListener('click', close);
+  document.addEventListener('keydown', (e)=>{ if(e.key==='Escape') close(); });
+})();
+
 const els = {
   file: $("file"),
   sheet: $("sheet"),

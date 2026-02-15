@@ -32,6 +32,52 @@ body{
 a{ color:inherit; }
 input,select,textarea,button{ font:inherit; }
 
+/* Sidebar nav (category linking like other Edu Tools) */
+.sidebar{
+  position: fixed;
+  inset: 0 auto 0 0;
+  width: 320px;
+  max-width: calc(100% - 60px);
+  background: rgba(255,255,255,0.92);
+  border-right: 1px solid var(--line);
+  box-shadow: 0 22px 54px rgba(0,0,0,0.16);
+  transform: translateX(-110%);
+  transition: transform 180ms ease;
+  z-index: 30;
+  padding: 14px;
+}
+.sidebar.isOpen{ transform: translateX(0); }
+.sideHead{ display:flex; align-items:center; justify-content:space-between; gap: 10px; }
+.sideBrand{ display:flex; align-items:center; gap: 10px; text-decoration:none; }
+.iconBtn{
+  border: 1px solid rgba(15,23,42,0.12);
+  background: rgba(255,255,255,0.9);
+  border-radius: 12px;
+  width: 42px;
+  height: 42px;
+  cursor: pointer;
+  display:grid;
+  place-items:center;
+  flex: 0 0 auto;
+}
+.sideNav{ margin-top: 14px; display:grid; gap: 6px; }
+.sideKicker{ font-size: 12px; font-weight: 900; color: rgba(15,23,42,0.62); margin: 6px 0; }
+.sideItem{
+  padding: 10px 12px;
+  border-radius: 14px;
+  text-decoration:none;
+  border: 1px solid rgba(15,23,42,0.10);
+  background: rgba(15,23,42,0.02);
+  font-weight: 800;
+  display:flex;
+  justify-content:space-between;
+  gap: 10px;
+}
+.sideItem.isActive{ background: rgba(37,99,235,0.10); border-color: rgba(37,99,235,0.18); }
+.sideNote{ margin-top: 12px; color: var(--muted); font-size: 12px; line-height: 1.45; }
+.scrim{ position: fixed; inset: 0; background: rgba(15,23,42,0.28); opacity:0; pointer-events:none; transition: opacity 180ms ease; z-index: 25; }
+.scrim.isOn{ opacity:1; pointer-events:auto; }
+
 .top{
   position: sticky;
   top: 0;
@@ -46,25 +92,27 @@ input,select,textarea,button{ font:inherit; }
   padding: 14px 16px;
   display:flex;
   gap: 14px;
-  align-items:center;
+  align-items:flex-start;
 }
 
-.brand{ display:flex; gap:10px; align-items:center; text-decoration:none; }
-.brandMark{
-  width: 38px; height: 38px;
-  border-radius: 14px;
-  display:grid; place-items:center;
-  font-weight: 900;
-  color: #fff;
-  background: linear-gradient(135deg, #2563eb, #10b981);
-}
+.brand{ display:flex; gap:10px; align-items:center; text-decoration:none; margin-top: 2px; }
 .brandText{ display:flex; flex-direction:column; line-height:1.05; }
-.brandTitle{ font-weight: 900; letter-spacing: 0.06em; font-size: 12px; color: rgba(15,23,42,0.72); }
+.brandTitle{ font-weight: 900; letter-spacing: 0.08em; font-size: 12px; color: rgba(15,23,42,0.72); }
 .brandSub{ font-size: 12px; color: var(--muted); margin-top: 4px; }
 
-.hero{ min-width:0; }
+.hero{ min-width:0; flex:1; }
 .title{ margin:0; font-size: 20px; letter-spacing:-0.02em; }
 .subtitle{ margin:6px 0 0; color: var(--muted); font-size: 13px; line-height:1.45; }
+.privacy{
+  margin-top: 10px;
+  padding: 10px 12px;
+  border-radius: 14px;
+  border: 1px solid rgba(37,99,235,0.16);
+  background: rgba(37,99,235,0.06);
+  color: rgba(15,23,42,0.82);
+  font-size: 12px;
+  line-height: 1.45;
+}
 
 .page{
   width: min(1100px, 100%);
