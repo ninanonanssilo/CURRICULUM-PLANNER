@@ -1,0 +1,119 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <title>학년 교육과정 문서 생성기 | Edu Tools</title>
+  <meta name="description" content="진도표/시수표 데이터를 업로드하면 학년 교육과정 문서(초안)를 자동으로 정리합니다." />
+  <link rel="icon" href="/favicon.ico" sizes="any" />
+  <link rel="stylesheet" href="/style.css" />
+</head>
+<body>
+  <div id="toast" class="toast" role="status" aria-live="polite" aria-atomic="true"></div>
+
+  <header class="top">
+    <div class="top-inner">
+      <a class="brand" href="https://edu-tools.pages.dev/" target="_blank" rel="noreferrer">
+        <span class="brandMark" aria-hidden="true">E</span>
+        <span class="brandText">
+          <span class="brandTitle">Edu Tools</span>
+          <span class="brandSub">업무 자동화 도우미</span>
+        </span>
+      </a>
+
+      <div class="hero">
+        <h1 class="title">학년 교육과정 문서 자동 생성기</h1>
+        <p class="subtitle">진도표/시수표 데이터를 업로드하면, 교과별 시수 합계와 진도표를 자동으로 정리합니다.</p>
+      </div>
+    </div>
+  </header>
+
+  <main class="page">
+    <section class="card">
+      <details class="help" open>
+        <summary>사용 안내</summary>
+        <div class="helpSteps">
+          <div>1) <b>엑셀(xlsx)</b> 파일을 업로드하세요. (구글시트는 <b>파일 → 다운로드 → Microsoft Excel(.xlsx)</b>)</div>
+          <div>2) 시트의 헤더(예: 주차/학년/학기/교과/단원/학습주제/시수)를 자동 인식합니다.</div>
+          <div>3) 교과별 시수 합계를 계산하고, 필요하면 CSV로 내려받을 수 있습니다.</div>
+        </div>
+      </details>
+
+      <div class="row" style="margin-top:12px;">
+        <label class="field" style="flex:1;">
+          <span class="label">파일 업로드 (xlsx)</span>
+          <input id="file" class="input" type="file" accept=".xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" />
+          <div class="hint">업로드한 파일은 서버로 전송되지 않고 <b>브라우저에서만</b> 처리됩니다.</div>
+        </label>
+
+        <label class="field" style="max-width:240px;">
+          <span class="label">시수 범위 합산</span>
+          <select id="rangePolicy" class="select">
+            <option value="avg" selected>평균(7-9 → 8)</option>
+            <option value="min">최소(7-9 → 7)</option>
+            <option value="max">최대(7-9 → 9)</option>
+          </select>
+          <div class="hint">시수 셀이 “7-9”처럼 범위일 때 계산 규칙</div>
+        </label>
+      </div>
+
+      <div class="row" style="margin-top:10px; align-items:flex-end;">
+        <label class="field" style="flex:1;">
+          <span class="label">시트 선택</span>
+          <select id="sheet" class="select" disabled>
+            <option value="">파일을 먼저 업로드하세요</option>
+          </select>
+        </label>
+
+        <div class="btns">
+          <button id="btnTotals" class="btn" type="button" disabled>시수 합계 계산</button>
+          <button id="btnCSV" class="btn ghost" type="button" disabled>CSV 다운로드</button>
+        </div>
+      </div>
+
+      <div id="status" class="status" role="status" aria-live="polite"></div>
+    </section>
+
+    <section class="grid2">
+      <section class="card">
+        <div class="cardHead">
+          <h2 class="h2">교과별 시수 합계</h2>
+          <div class="hint">교과(열)별로 시수를 합산합니다.</div>
+        </div>
+        <div class="tableWrap">
+          <table class="table" aria-label="교과별 시수 합계">
+            <thead>
+              <tr>
+                <th>교과</th>
+                <th style="width:120px; text-align:right;">합계</th>
+                <th style="width:120px; text-align:right;">행 개수</th>
+              </tr>
+            </thead>
+            <tbody id="totalsBody">
+              <tr><td colspan="3" class="muted">파일을 업로드하면 표시됩니다.</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <section class="card">
+        <div class="cardHead">
+          <h2 class="h2">원본 미리보기</h2>
+          <div class="hint">인식된 헤더/데이터가 맞는지 확인하세요.</div>
+        </div>
+        <div class="tableWrap" id="previewWrap">
+          <div class="muted">파일을 업로드하면 미리보기가 표시됩니다.</div>
+        </div>
+      </section>
+    </section>
+
+    <footer class="footer">
+      <div class="footerTitle">EDU TOOLS</div>
+      <div class="footerCopy">교사용 업무 자동화 도구 모음</div>
+    </footer>
+  </main>
+
+  <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js" defer></script>
+  <script src="/main.js" defer></script>
+</body>
+</html>
