@@ -30,6 +30,8 @@ const els = {
   rangePolicy: $("rangePolicy"),
   btnTotals: $("btnTotals"),
   btnCSV: $("btnCSV"),
+  btnDocx: $("btnDocx"),
+  schoolYear: $("schoolYear"),
   status: $("status"),
   totalsBody: $("totalsBody"),
   previewWrap: $("previewWrap"),
@@ -309,6 +311,11 @@ async function handleFile(file) {
     return;
   }
 
+  // default school year from file or current year
+  if (els.schoolYear && !String(els.schoolYear.value || "").trim()) {
+    els.schoolYear.value = String(new Date().getFullYear());
+  }
+
   setStatus("파일을 읽는 중…");
 
   const buf = await file.arrayBuffer();
@@ -328,6 +335,7 @@ async function handleFile(file) {
 
   els.btnTotals.disabled = false;
   els.btnCSV.disabled = false;
+  if (els.btnDocx) els.btnDocx.disabled = false;
 
   setStatus("파일을 불러왔습니다. 시수 합계를 계산해 보세요.");
   toast("파일을 불러왔습니다.");
@@ -398,4 +406,91 @@ els.btnCSV?.addEventListener("click", () => {
   if (!state.rows || !state.headerMap) return;
   const objs = rowsToObjects(state.rows, state.headerMap);
   downloadCSV(objs, state.headerMap);
+});
+
+async function downloadDOCX(){
+  if (!state.rows || !state.headerMap) return;
+  if (!window.docx) {
+    toast("DOCX 라이브러리 로딩 중입니다. 잠시 후 다시 시도해 주세요.", 2200);
+    return;
+  }
+
+  const { Document, Packer, Paragraph, TextRun, Table, TableRow, TableCell, WidthType, AlignmentType, HeadingLevel } = window.docx;
+
+  const policy = els.rangePolicy?.value || "avg";
+  const objs = rowsToObjects(state.rows, state.headerMap);
+
+  // sort: week -> subject (requested)
+  const numOrInf = (s)=>{
+    const n = parseFloat(String(s||"").replace(/[^0-9.\-]/g, ""));
+    return Number.isFinite(n) ? n : Infinity;
+  };
+  objs.sort((a,b)=>{
+    const wa = numOrInf(a.week), wb = numOrInf(b.week);
+    if (wa !== wb) return wa - wb;
+    const sa = (a.subject||"");
+    const sb = (b.subject||"");
+    const c = sa.localeCompare(sb, 'ko-KR');
+    if (c) return c;
+    return (a.unit||"").localeCompare(b.unit||"", 'ko-KR');
+  });
+
+  const grade = (objs.find(o=>o.grade)?.grade || "").trim();
+  const semester = (objs.find(o=>o.semester)?.semester || "").trim();
+  const year = String(els.schoolYear?.value || new Date().getFullYear()).trim();
+
+  const title = `${year}학년도 ${grade?grade+"학년 ":""}${semester?semester+"학기 ":""}전과목 진도표`;
+
+  const meta = `생성일: ${new Date().toISOString().slice(0,10)} / 시수범위: ${policy}`;
+
+  const headerCells = ["주차","교과","단원","학습주제","시수"].map(h=>
+    new TableCell({
+      children:[new Paragraph({children:[new TextRun({text:h, bold:true})]})],
+      width: { size: 20, type: WidthType.PERCENTAGE },
+    })
+  );
+
+  const rows = [];
+  rows.push(new TableRow({ children: headerCells }));
+
+  for (const o of objs){
+    const h = parseHourCell(o.hoursRaw, policy);
+    const cells = [
+      o.week,
+      o.subject,
+      o.unit,
+      o.topic,
+      (h==null? String(o.hoursRaw??"") : (Math.round(h*10)/10).toString()),
+    ].map((t)=> new TableCell({ children:[new Paragraph(String(t||""))] }));
+    rows.push(new TableRow({ children: cells }));
+  }
+
+  const table = new Table({
+    width: { size: 100, type: WidthType.PERCENTAGE },
+    rows,
+  });
+
+  const doc = new Document({
+    sections: [{
+      properties: {},
+      children: [
+        new Paragraph({ text: title, heading: HeadingLevel.HEADING_1 }),
+        new Paragraph({ children: [ new TextRun({ text: meta, color: "666666" }) ] }),
+        new Paragraph({ text: "" }),
+        table,
+      ]
+    }]
+  });
+
+  const blob = await Packer.toBlob(doc);
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = title.replace(/\s+/g,'_') + '.docx';
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+}
+
+els.btnDocx?.addEventListener('click', ()=>{
+  downloadDOCX().catch(()=>toast('DOCX 생성에 실패했습니다.', 2400));
 });
