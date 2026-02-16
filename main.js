@@ -730,15 +730,19 @@ async function downloadDOCX(){
     return;
   }
 
-  const { Document, Packer, Paragraph, TextRun, Table, TableRow, TableCell, WidthType, AlignmentType, HeadingLevel } = window.docx;
+  const { Document, Packer, Paragraph, TextRun, Table, TableRow, TableCell, WidthType, HeadingLevel } = window.docx;
 
   const policy = els.rangePolicy?.value || "avg";
   const gradeBand = String(els.gradeBand?.value || "").trim();
   const gradeSelected = String(els.gradeFilter?.value || "").trim();
+  const planMap = parseSubjectPlan(els.subjectPlan?.value || "");
+  const curriculumRows = parseSubjectCurriculum(els.subjectCurriculum?.value || "");
+  const scheduleRows = state.scheduleRows || [];
+
   const objsAll = rowsToObjects(state.rows, state.headerMap);
   const objs = filterByGrade(objsAll, gradeBand, gradeSelected);
+  const { out: totals } = computeTotals(objs, policy, planMap);
 
-  // sort: week -> subject (requested)
   const numOrInf = (s)=>{
     const n = parseFloat(String(s||"").replace(/[^0-9.\-]/g, ""));
     return Number.isFinite(n) ? n : Infinity;
@@ -762,47 +766,85 @@ async function downloadDOCX(){
     return;
   }
 
-  const title = `${year}학년도 ${grade?grade+"학년 ":""}${semester?semester+"학기 ":""}전과목 진도표`;
-
+  const title = `${year}학년도 ${grade?grade+"학년 ":""}${semester?semester+"학기 ":""}학교교육과정 편성·운영 및 평가 계획`;
   const meta = `생성일: ${new Date().toISOString().slice(0,10)} / 시수범위: ${policy}`;
 
-  const headerCells = ["주차","교과","단원","학습주제","시수"].map(h=>
-    new TableCell({
-      children:[new Paragraph({children:[new TextRun({text:h, bold:true})]})],
-      width: { size: 20, type: WidthType.PERCENTAGE },
+  const makeTable = (headers, rows)=> new Table({
+    width: { size: 100, type: WidthType.PERCENTAGE },
+    rows: [
+      new TableRow({ children: headers.map(h=>new TableCell({ children:[new Paragraph({children:[new TextRun({text:h, bold:true})]})] })) }),
+      ...rows.map(r=>new TableRow({ children: r.map(v=>new TableCell({ children:[new Paragraph(String(v ?? ""))] })) }))
+    ]
+  });
+
+  const totalsTable = makeTable(
+    ["교과", "편제", "합계", "차이", "행 개수"],
+    (totals.length ? totals : [{subject:"(데이터 없음)", planned:"", sum:"", diff:"", rows:""}]).map(t=>[
+      t.subject || "",
+      t.planned == null ? "-" : t.planned,
+      Math.round((t.sum || 0) * 10) / 10,
+      t.diff == null ? "-" : (t.diff > 0 ? `+${t.diff}` : `${t.diff}`),
+      t.rows || ""
+    ])
+  );
+
+  const curriculumTable = makeTable(
+    ["과목", "성취기준(핵심내용)", "성취수준"],
+    (curriculumRows.length ? curriculumRows : [{subject:"(입력 없음)", achievement:"", level:""}]).map(r=>[r.subject, r.achievement, r.level])
+  );
+
+  const scheduleTable = makeTable(
+    ["날짜", "유형", "메모"],
+    (scheduleRows.length ? scheduleRows : [{date:"(입력 없음)", type:"", memo:""}]).map(r=>[r.date, r.type, r.memo || ""])
+  );
+
+  const progressTable = makeTable(
+    ["주차","교과","단원","학습주제","시수"],
+    objs.map(o=>{
+      const h = parseHourCell(o.hoursRaw, policy);
+      return [
+        o.week,
+        o.subject,
+        o.unit,
+        o.topic,
+        (h==null? String(o.hoursRaw??"") : (Math.round(h*10)/10).toString()),
+      ];
     })
   );
 
-  const rows = [];
-  rows.push(new TableRow({ children: headerCells }));
+  const children = [
+    new Paragraph({ text: title, heading: HeadingLevel.HEADING_1 }),
+    new Paragraph({ children: [ new TextRun({ text: meta, color: "666666" }) ] }),
+    new Paragraph({ text: "" }),
 
-  for (const o of objs){
-    const h = parseHourCell(o.hoursRaw, policy);
-    const cells = [
-      o.week,
-      o.subject,
-      o.unit,
-      o.topic,
-      (h==null? String(o.hoursRaw??"") : (Math.round(h*10)/10).toString()),
-    ].map((t)=> new TableCell({ children:[new Paragraph(String(t||""))] }));
-    rows.push(new TableRow({ children: cells }));
-  }
+    new Paragraph({ text: "1. 학교교육과정 편성·운영의 기본 방향", heading: HeadingLevel.HEADING_2 }),
+    new Paragraph(`- 대상: ${grade ? grade + "학년" : (gradeBand ? gradeBand + "학년군" : "전체")}`),
+    new Paragraph("- 2022 개정 교육과정 및 학교알리미 2-가 공시항목 기준에 따라 작성함."),
+    new Paragraph(""),
 
-  const table = new Table({
-    width: { size: 100, type: WidthType.PERCENTAGE },
-    rows,
-  });
+    new Paragraph({ text: "2. 편제 및 시간 배당", heading: HeadingLevel.HEADING_2 }),
+    totalsTable,
+    new Paragraph(""),
+
+    new Paragraph({ text: "3. 교육과정 편성·운영 계획", heading: HeadingLevel.HEADING_2 }),
+    curriculumTable,
+    new Paragraph(""),
+
+    new Paragraph({ text: "4. 학교교육과정 편성·운영 평가 계획", heading: HeadingLevel.HEADING_2 }),
+    new Paragraph("- 학기 중(4월/9월) 운영 점검 및 성취기준 도달도 점검을 실시한다."),
+    new Paragraph("- 교과별 계획 대비 실제 운영 시수, 학사일정 변동, 평가 결과를 반영해 개선한다."),
+    new Paragraph(""),
+
+    new Paragraph({ text: "5. 연간학사일정", heading: HeadingLevel.HEADING_2 }),
+    scheduleTable,
+    new Paragraph(""),
+
+    new Paragraph({ text: "부록. 주차별 진도표", heading: HeadingLevel.HEADING_2 }),
+    progressTable,
+  ];
 
   const doc = new Document({
-    sections: [{
-      properties: {},
-      children: [
-        new Paragraph({ text: title, heading: HeadingLevel.HEADING_1 }),
-        new Paragraph({ children: [ new TextRun({ text: meta, color: "666666" }) ] }),
-        new Paragraph({ text: "" }),
-        table,
-      ]
-    }]
+    sections: [{ properties: {}, children }]
   });
 
   const blob = await Packer.toBlob(doc);
