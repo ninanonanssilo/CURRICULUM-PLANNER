@@ -132,6 +132,23 @@
       </label>
 
       <div class="row" style="margin-top:10px; align-items:flex-end;">
+        <label class="field" style="max-width:220px;">
+          <span class="label">학기 시작일</span>
+          <input id="termStartDate" class="input" type="date" />
+          <div class="hint">주차(1,2,3...)를 실제 날짜와 매핑할 기준일</div>
+        </label>
+        <label class="field" style="flex:1;">
+          <span class="label">학사 일정 입력 (학교별, 공휴일/대체공휴일 포함)</span>
+          <textarea id="schoolSchedule" class="input" rows="4" placeholder="예:
+2026-03-02,개학
+2026-05-05,공휴일,어린이날
+2026-05-06,대체공휴일
+2026-10-02,재량휴업"></textarea>
+          <div class="hint">형식: 날짜,유형,메모. 유형이 공휴일/대체공휴일/재량휴업/방학/시험이면 수업일에서 제외합니다.</div>
+        </label>
+      </div>
+
+      <div class="row" style="margin-top:10px; align-items:flex-end;">
         <label class="field" style="flex:1;">
           <span class="label">시트 선택</span>
           <select id="sheet" class="select" disabled>
@@ -198,10 +215,23 @@
     <section class="card" style="margin-top:14px;">
       <div class="cardHead">
         <h2 class="h2">3) 연간 시간표 (주차별)</h2>
-        <div class="hint">선택한 학년(군) 기준으로 주차-과목별 시수를 집계합니다.</div>
+        <div class="hint">선택한 학년(군) 기준으로 주차-과목별 시수를 집계하고, 학사 일정에 따라 수업가능일을 반영합니다.</div>
       </div>
       <div class="tableWrap" id="timetableWrap">
         <div class="muted">파일을 업로드하면 연간 시간표가 표시됩니다.</div>
+      </div>
+    </section>
+
+    <section class="card" style="margin-top:14px;">
+      <div class="cardHead">
+        <h2 class="h2">학사 일정 요약</h2>
+        <div class="hint">학교별 공휴일/대체공휴일/휴업일 입력 결과를 확인합니다.</div>
+      </div>
+      <div class="tableWrap">
+        <table class="table" aria-label="학사 일정 요약">
+          <thead><tr><th style="width:140px;">날짜</th><th style="width:180px;">유형</th><th>메모</th></tr></thead>
+          <tbody id="scheduleBody"><tr><td colspan="3" class="muted">학사 일정을 입력하면 표시됩니다.</td></tr></tbody>
+        </table>
       </div>
     </section>
 

@@ -32,6 +32,8 @@ const els = {
   gradeFilter: $("gradeFilter"),
   subjectPlan: $("subjectPlan"),
   subjectCurriculum: $("subjectCurriculum"),
+  termStartDate: $("termStartDate"),
+  schoolSchedule: $("schoolSchedule"),
   btnTotals: $("btnTotals"),
   btnCSV: $("btnCSV"),
   btnDocx: $("btnDocx"),
@@ -40,6 +42,7 @@ const els = {
   totalsBody: $("totalsBody"),
   curriculumBody: $("curriculumBody"),
   timetableWrap: $("timetableWrap"),
+  scheduleBody: $("scheduleBody"),
   previewWrap: $("previewWrap"),
   toast: $("toast"),
 };
@@ -295,7 +298,58 @@ function renderCurriculum(rows){
   }
 }
 
-function renderAnnualTimetable(objs, policy){
+function parseSchoolSchedule(text){
+  const offKeys = ["공휴일","대체공휴일","재량휴업","방학","시험"];
+  return String(text || "").split(/\r?\n/).map(line=>{
+    const t = line.trim();
+    if (!t) return null;
+    const parts = t.split(",").map(x=>x.trim());
+    const date = parts[0] || "";
+    const type = parts[1] || "";
+    const memo = parts.slice(2).join(",");
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) return null;
+    const isOff = offKeys.some(k => type.includes(k));
+    return { date, type, memo, isOff };
+  }).filter(Boolean);
+}
+
+function renderSchedule(rows){
+  const body = els.scheduleBody;
+  if (!body) return;
+  body.innerHTML = "";
+  if (!rows.length){
+    body.innerHTML = `<tr><td colspan="3" class="muted">학사 일정을 입력하면 표시됩니다.</td></tr>`;
+    return;
+  }
+  const sorted = rows.slice().sort((a,b)=>a.date.localeCompare(b.date));
+  for (const r of sorted){
+    const tr = document.createElement("tr");
+    tr.innerHTML = `<td>${escapeHtml(r.date)}</td><td>${escapeHtml(r.type)}</td><td>${escapeHtml(r.memo || "")}</td>`;
+    body.appendChild(tr);
+  }
+}
+
+function addDays(date, n){
+  const d = new Date(date.getTime());
+  d.setDate(d.getDate() + n);
+  return d;
+}
+
+function weekAvailableDays(weekNo, termStartDate, scheduleRows){
+  const n = Number(String(weekNo).replace(/[^0-9.\-]/g, ""));
+  if (!Number.isFinite(n) || n < 1 || !termStartDate) return "";
+  const start = addDays(new Date(termStartDate), (Math.floor(n)-1) * 7);
+  const offSet = new Set((scheduleRows || []).filter(x=>x.isOff).map(x=>x.date));
+  let days = 0;
+  for (let i=0;i<5;i++){
+    const d = addDays(start, i);
+    const key = d.toISOString().slice(0,10);
+    if (!offSet.has(key)) days++;
+  }
+  return days;
+}
+
+function renderAnnualTimetable(objs, policy, termStartDate, scheduleRows){
   const wrap = els.timetableWrap;
   if (!wrap) return;
   if (!objs.length){
@@ -330,7 +384,7 @@ function renderAnnualTimetable(objs, policy){
   table.className = "table";
   const thead = document.createElement("thead");
   const headRow = document.createElement("tr");
-  headRow.innerHTML = `<th>주차</th>${subjects.map(s=>`<th style="text-align:right;">${escapeHtml(s)}</th>`).join("")}<th style="text-align:right;">합계</th>`;
+  headRow.innerHTML = `<th>주차</th><th style="text-align:right;">수업가능일</th>${subjects.map(s=>`<th style="text-align:right;">${escapeHtml(s)}</th>`).join("")}<th style="text-align:right;">합계</th>`;
   thead.appendChild(headRow);
   table.appendChild(thead);
 
@@ -344,7 +398,8 @@ function renderAnnualTimetable(objs, policy){
       sum += v;
       return `<td style="text-align:right;">${v ? v : ""}</td>`;
     }).join("");
-    tr.innerHTML = `<td>${escapeHtml(wk)}</td>${cells}<td style="text-align:right; font-weight:700;">${Math.round(sum*10)/10}</td>`;
+    const avail = weekAvailableDays(wk, termStartDate, scheduleRows);
+    tr.innerHTML = `<td>${escapeHtml(wk)}</td><td style="text-align:right;">${avail === "" ? "" : avail}</td>${cells}<td style="text-align:right; font-weight:700;">${Math.round(sum*10)/10}</td>`;
     tbody.appendChild(tr);
   }
 
@@ -567,6 +622,8 @@ function applyTotals(){
   const gradeBand = String(els.gradeBand?.value || "").trim();
   const grade = String(els.gradeFilter?.value || "").trim();
   const planMap = parseSubjectPlan(els.subjectPlan?.value || "");
+  const scheduleRows = parseSchoolSchedule(els.schoolSchedule?.value || "");
+  const termStartDate = els.termStartDate?.value || "";
 
   const objsAll = rowsToObjects(state.rows, state.headerMap);
   const objs = filterByGrade(objsAll, gradeBand, grade);
@@ -575,7 +632,8 @@ function applyTotals(){
 
   renderTotals(out);
   renderCurriculum(parseSubjectCurriculum(els.subjectCurriculum?.value || ""));
-  renderAnnualTimetable(objs, policy);
+  renderSchedule(scheduleRows);
+  renderAnnualTimetable(objs, policy, termStartDate, scheduleRows);
 
   const bandLabel = gradeBand ? `${gradeBand}학년군 / ` : "";
   const gradeLabel = grade ? `${grade}학년 / ` : bandLabel;
@@ -697,14 +755,23 @@ async function downloadDOCX(){
     if (state.rows && state.headerMap) applyTotals();
   });
 });
-[els.subjectPlan, els.subjectCurriculum].forEach((el)=>{
+[els.subjectPlan, els.subjectCurriculum, els.schoolSchedule].forEach((el)=>{
   el?.addEventListener('input', ()=>{
     if (state.rows && state.headerMap) applyTotals();
+    else if (el === els.schoolSchedule) renderSchedule(parseSchoolSchedule(els.schoolSchedule?.value || ""));
   });
+});
+els.termStartDate?.addEventListener('change', ()=>{
+  if (state.rows && state.headerMap) applyTotals();
 });
 
 syncGradeOptions();
 renderCurriculum(parseSubjectCurriculum(els.subjectCurriculum?.value || ""));
+renderSchedule(parseSchoolSchedule(els.schoolSchedule?.value || ""));
+if (els.termStartDate && !els.termStartDate.value){
+  const y = Number(els.schoolYear?.value || new Date().getFullYear());
+  els.termStartDate.value = `${y}-03-02`;
+}
 
 els.btnDocx?.addEventListener('click', ()=>{
   downloadDOCX().catch(()=>toast('DOCX 생성에 실패했습니다.', 2400));
