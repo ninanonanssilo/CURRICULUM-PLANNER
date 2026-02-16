@@ -71,6 +71,20 @@
           <div class="hint">문서 제목에 사용</div>
         </label>
 
+        <label class="field" style="max-width:180px;">
+          <span class="label">학년 선택</span>
+          <select id="gradeFilter" class="select">
+            <option value="" selected>전체 학년</option>
+            <option value="1">1학년</option>
+            <option value="2">2학년</option>
+            <option value="3">3학년</option>
+            <option value="4">4학년</option>
+            <option value="5">5학년</option>
+            <option value="6">6학년</option>
+          </select>
+          <div class="hint">선택한 학년 데이터만 합산/다운로드</div>
+        </label>
+
         <label class="field" style="flex:1;">
           <span class="label">파일 업로드 (xlsx)</span>
           <input id="file" class="input" type="file" accept=".xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" />
@@ -87,6 +101,15 @@
           <div class="hint">시수 셀이 “7-9”처럼 범위일 때 계산 규칙</div>
         </label>
       </div>
+
+      <label class="field" style="margin-top:10px;">
+        <span class="label">과목별 편제 시수 입력 (선택)</span>
+        <textarea id="subjectPlan" class="input" rows="4" placeholder="예:
+국어: 120
+수학: 136
+사회: 68"></textarea>
+        <div class="hint">형식: 한 줄에 "과목: 시수". 입력하면 합계표에 편제/차이가 함께 표시됩니다.</div>
+      </label>
 
       <div class="row" style="margin-top:10px; align-items:flex-end;">
         <label class="field" style="flex:1;">
@@ -117,12 +140,14 @@
             <thead>
               <tr>
                 <th>교과</th>
+                <th style="width:120px; text-align:right;">편제</th>
                 <th style="width:120px; text-align:right;">합계</th>
+                <th style="width:120px; text-align:right;">차이</th>
                 <th style="width:120px; text-align:right;">행 개수</th>
               </tr>
             </thead>
             <tbody id="totalsBody">
-              <tr><td colspan="3" class="muted">파일을 업로드하면 표시됩니다.</td></tr>
+              <tr><td colspan="5" class="muted">파일을 업로드하면 표시됩니다.</td></tr>
             </tbody>
           </table>
         </div>

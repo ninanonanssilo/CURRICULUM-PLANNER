@@ -28,6 +28,8 @@ const els = {
   file: $("file"),
   sheet: $("sheet"),
   rangePolicy: $("rangePolicy"),
+  gradeFilter: $("gradeFilter"),
+  subjectPlan: $("subjectPlan"),
   btnTotals: $("btnTotals"),
   btnCSV: $("btnCSV"),
   btnDocx: $("btnDocx"),
@@ -43,6 +45,7 @@ const state = {
   rows: null,
   headerMap: null,
   activeSheet: null,
+  lastTotals: null,
 };
 
 function toast(msg, ms = 1800) {
@@ -211,7 +214,29 @@ function renderPreview(header, dataRows, limit = 30) {
   wrap.appendChild(note);
 }
 
-function computeTotals(objs, policy) {
+function parseSubjectPlan(text){
+  const map = new Map();
+  const lines = String(text || "").split(/\r?\n/);
+  for (const lineRaw of lines){
+    const line = String(lineRaw || "").trim();
+    if (!line) continue;
+    const parts = line.split(/[:：\t]/).map(s=>String(s||"").trim()).filter(Boolean);
+    if (parts.length < 2) continue;
+    const subject = parts[0];
+    const n = Number(String(parts.slice(1).join(" ")).replace(/[^0-9.\-]/g, ""));
+    if (!subject || !Number.isFinite(n)) continue;
+    map.set(subject, n);
+  }
+  return map;
+}
+
+function filterByGrade(objs, grade){
+  const g = String(grade || "").trim();
+  if (!g) return objs;
+  return objs.filter(o => String(o.grade || "").trim() === g);
+}
+
+function computeTotals(objs, policy, planMap) {
   const by = new Map();
   let badHours = 0;
 
@@ -228,7 +253,12 @@ function computeTotals(objs, policy) {
     else rec.sum += h;
   }
 
-  const out = Array.from(by.values()).sort((a, b) => b.sum - a.sum);
+  const out = Array.from(by.values()).map((it)=>{
+    const planned = planMap?.has(it.subject) ? planMap.get(it.subject) : null;
+    const diff = planned == null ? null : (Math.round((it.sum - planned) * 10) / 10);
+    return {...it, planned, diff};
+  }).sort((a, b) => b.sum - a.sum);
+
   return { out, badHours, totalRows: objs.length };
 }
 
@@ -237,7 +267,7 @@ function renderTotals(items) {
   if (!body) return;
   body.innerHTML = "";
   if (!items || !items.length) {
-    body.innerHTML = `<tr><td colspan="3" class="muted">표시할 데이터가 없습니다.</td></tr>`;
+    body.innerHTML = `<tr><td colspan="5" class="muted">표시할 데이터가 없습니다.</td></tr>`;
     return;
   }
 
@@ -247,16 +277,26 @@ function renderTotals(items) {
     const td1 = document.createElement("td");
     td1.textContent = it.subject;
 
+    const tdPlan = document.createElement("td");
+    tdPlan.style.textAlign = "right";
+    tdPlan.textContent = it.planned == null ? "-" : (Math.round(it.planned * 10) / 10).toString();
+
     const td2 = document.createElement("td");
     td2.style.textAlign = "right";
     td2.textContent = (Math.round(it.sum * 10) / 10).toString();
+
+    const tdDiff = document.createElement("td");
+    tdDiff.style.textAlign = "right";
+    tdDiff.textContent = it.diff == null ? "-" : (it.diff > 0 ? `+${it.diff}` : `${it.diff}`);
 
     const td3 = document.createElement("td");
     td3.style.textAlign = "right";
     td3.textContent = String(it.rows);
 
     tr.appendChild(td1);
+    tr.appendChild(tdPlan);
     tr.appendChild(td2);
+    tr.appendChild(tdDiff);
     tr.appendChild(td3);
 
     if (it.bad) {
@@ -267,7 +307,7 @@ function renderTotals(items) {
   }
 }
 
-function downloadCSV(objs, headerMap) {
+function downloadCSV(objs, totalsBySubject = null) {
   const cols = [
     ["주차", "week"],
     ["학년", "grade"],
@@ -276,11 +316,24 @@ function downloadCSV(objs, headerMap) {
     ["단원", "unit"],
     ["학습주제", "topic"],
     ["시수", "hoursRaw"],
+    ["편제시수", "planned"],
+    ["편제대비차이", "diff"],
   ];
 
   const rows = [cols.map((c) => c[0])];
   for (const o of objs) {
-    rows.push(cols.map((c) => String(o[c[1]] ?? "")));
+    const t = totalsBySubject?.get((o.subject || "").trim()) || null;
+    rows.push([
+      String(o.week ?? ""),
+      String(o.grade ?? ""),
+      String(o.semester ?? ""),
+      String(o.subject ?? ""),
+      String(o.unit ?? ""),
+      String(o.topic ?? ""),
+      String(o.hoursRaw ?? ""),
+      t?.planned == null ? "" : String(t.planned),
+      t?.diff == null ? "" : String(t.diff),
+    ]);
   }
 
   const csv = rows
@@ -366,6 +419,8 @@ async function loadSheet(name) {
   } else {
     setStatus("시트를 불러왔습니다.");
   }
+
+  if (!missing.length) applyTotals();
 }
 
 function escapeHtml(s) {
@@ -388,24 +443,39 @@ els.sheet?.addEventListener("change", async () => {
   await loadSheet(name);
 });
 
-els.btnTotals?.addEventListener("click", () => {
-  if (!state.rows || !state.headerMap) return;
+function applyTotals(){
+  if (!state.rows || !state.headerMap) return null;
+
   const policy = els.rangePolicy?.value || "avg";
-  const objs = rowsToObjects(state.rows, state.headerMap);
-  const { out, badHours, totalRows } = computeTotals(objs, policy);
+  const grade = String(els.gradeFilter?.value || "").trim();
+  const planMap = parseSubjectPlan(els.subjectPlan?.value || "");
+
+  const objsAll = rowsToObjects(state.rows, state.headerMap);
+  const objs = filterByGrade(objsAll, grade);
+  const { out, badHours, totalRows } = computeTotals(objs, policy, planMap);
+  state.lastTotals = out;
 
   renderTotals(out);
+  const gradeLabel = grade ? `${grade}학년 / ` : "";
   if (badHours) {
-    setStatus(`완료: ${out.length}개 교과 합산. 시수 파싱 실패 ${badHours}건(총 ${totalRows}행). 시수 칸 형식을 확인하세요.`, { error: true });
+    setStatus(`완료: ${gradeLabel}${out.length}개 교과 합산. 시수 파싱 실패 ${badHours}건(총 ${totalRows}행).`, { error: true });
   } else {
-    setStatus(`완료: ${out.length}개 교과 합산(총 ${totalRows}행).`);
+    setStatus(`완료: ${gradeLabel}${out.length}개 교과 합산(총 ${totalRows}행).`);
   }
+
+  return { objs, out };
+}
+
+els.btnTotals?.addEventListener("click", () => {
+  applyTotals();
 });
 
 els.btnCSV?.addEventListener("click", () => {
   if (!state.rows || !state.headerMap) return;
-  const objs = rowsToObjects(state.rows, state.headerMap);
-  downloadCSV(objs, state.headerMap);
+  const result = applyTotals();
+  if (!result) return;
+  const map = new Map((result.out || []).map(x=>[x.subject, x]));
+  downloadCSV(result.objs, map);
 });
 
 async function downloadDOCX(){
@@ -418,7 +488,9 @@ async function downloadDOCX(){
   const { Document, Packer, Paragraph, TextRun, Table, TableRow, TableCell, WidthType, AlignmentType, HeadingLevel } = window.docx;
 
   const policy = els.rangePolicy?.value || "avg";
-  const objs = rowsToObjects(state.rows, state.headerMap);
+  const gradeSelected = String(els.gradeFilter?.value || "").trim();
+  const objsAll = rowsToObjects(state.rows, state.headerMap);
+  const objs = filterByGrade(objsAll, gradeSelected);
 
   // sort: week -> subject (requested)
   const numOrInf = (s)=>{
@@ -435,9 +507,14 @@ async function downloadDOCX(){
     return (a.unit||"").localeCompare(b.unit||"", 'ko-KR');
   });
 
-  const grade = (objs.find(o=>o.grade)?.grade || "").trim();
+  const grade = (gradeSelected || objs.find(o=>o.grade)?.grade || "").trim();
   const semester = (objs.find(o=>o.semester)?.semester || "").trim();
   const year = String(els.schoolYear?.value || new Date().getFullYear()).trim();
+
+  if (!objs.length){
+    toast("선택한 학년에 해당하는 데이터가 없어 DOCX를 만들 수 없습니다.", 2400);
+    return;
+  }
 
   const title = `${year}학년도 ${grade?grade+"학년 ":""}${semester?semester+"학기 ":""}전과목 진도표`;
 
@@ -490,6 +567,15 @@ async function downloadDOCX(){
   a.click();
   a.remove();
 }
+
+[els.rangePolicy, els.gradeFilter].forEach((el)=>{
+  el?.addEventListener('change', ()=>{
+    if (state.rows && state.headerMap) applyTotals();
+  });
+});
+els.subjectPlan?.addEventListener('input', ()=>{
+  if (state.rows && state.headerMap) applyTotals();
+});
 
 els.btnDocx?.addEventListener('click', ()=>{
   downloadDOCX().catch(()=>toast('DOCX 생성에 실패했습니다.', 2400));
