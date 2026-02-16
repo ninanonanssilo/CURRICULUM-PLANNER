@@ -105,15 +105,21 @@
           <div class="hint">업로드한 파일은 서버로 전송되지 않고 <b>브라우저에서만</b> 처리됩니다.</div>
         </label>
 
-        <label class="field" style="max-width:240px;">
-          <span class="label">시수 범위 합산</span>
-          <select id="rangePolicy" class="select">
-            <option value="avg" selected>평균(7-9 → 8)</option>
-            <option value="min">최소(7-9 → 7)</option>
-            <option value="max">최대(7-9 → 9)</option>
-          </select>
-          <div class="hint">시수 셀이 “7-9”처럼 범위일 때 계산 규칙</div>
-        </label>
+        <details class="help" style="max-width:300px; margin:0;">
+          <summary>고급 옵션: 시수 범위 계산</summary>
+          <div class="helpSteps" style="margin-top:8px;">
+            <div>보통은 <b>건드리지 않아도 됩니다</b>. (기본: 평균)</div>
+            <div>예: 시수가 "7-9"로 적혀 있으면</div>
+            <div>- 평균: 8 / 최소: 7 / 최대: 9</div>
+          </div>
+          <label class="field" style="margin-top:8px; min-width:0;">
+            <select id="rangePolicy" class="select">
+              <option value="avg" selected>평균(7-9 → 8)</option>
+              <option value="min">최소(7-9 → 7)</option>
+              <option value="max">최대(7-9 → 9)</option>
+            </select>
+          </label>
+        </details>
       </div>
 
       <label class="field" style="margin-top:10px;">
@@ -167,6 +173,15 @@
       </div>
 
       <div id="status" class="status" role="status" aria-live="polite"></div>
+
+      <details class="help" style="margin-top:10px;">
+        <summary>입력 예시 (튜토리얼)</summary>
+        <div class="helpSteps">
+          <div><b>과목별 편제 시수</b><br/>국어: 120<br/>수학: 136<br/>사회: 68</div>
+          <div><b>과목별 교육과정</b><br/>국어 | 듣기·말하기 성취기준 | 기본<br/>수학 | 수와 연산 성취기준 | 심화</div>
+          <div><b>학사 일정</b><br/>2026-05-05,공휴일,어린이날<br/>2026-05-06,대체공휴일<br/>2026-10-02,재량휴업</div>
+        </div>
+      </details>
     </section>
 
     <section class="grid2">
