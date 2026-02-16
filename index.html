@@ -72,6 +72,17 @@
         </label>
 
         <label class="field" style="max-width:180px;">
+          <span class="label">학년군 선택</span>
+          <select id="gradeBand" class="select">
+            <option value="" selected>전체 학년군</option>
+            <option value="1-2">1~2학년군</option>
+            <option value="3-4">3~4학년군</option>
+            <option value="5-6">5~6학년군</option>
+          </select>
+          <div class="hint">학년군을 먼저 고르면 학년 선택이 좁혀집니다.</div>
+        </label>
+
+        <label class="field" style="max-width:180px;">
           <span class="label">학년 선택</span>
           <select id="gradeFilter" class="select">
             <option value="" selected>전체 학년</option>
@@ -103,12 +114,21 @@
       </div>
 
       <label class="field" style="margin-top:10px;">
-        <span class="label">과목별 편제 시수 입력 (선택)</span>
+        <span class="label">1) 과목별 편제 시수 입력 (총론 기준, 선택)</span>
         <textarea id="subjectPlan" class="input" rows="4" placeholder="예:
 국어: 120
 수학: 136
 사회: 68"></textarea>
         <div class="hint">형식: 한 줄에 "과목: 시수". 입력하면 합계표에 편제/차이가 함께 표시됩니다.</div>
+      </label>
+
+      <label class="field" style="margin-top:10px;">
+        <span class="label">2) 과목별 교육과정 입력 (성취기준/성취수준, 선택)</span>
+        <textarea id="subjectCurriculum" class="input" rows="5" placeholder="예:
+국어 | 듣기·말하기 중심 성취기준 | 기본
+수학 | 수와 연산 성취기준 | 심화
+사회 | 지역 이해 성취기준 | 기본"></textarea>
+        <div class="hint">형식: 한 줄에 "과목 | 성취기준(또는 핵심내용) | 성취수준"</div>
       </label>
 
       <div class="row" style="margin-top:10px; align-items:flex-end;">
@@ -132,8 +152,8 @@
     <section class="grid2">
       <section class="card">
         <div class="cardHead">
-          <h2 class="h2">교과별 시수 합계</h2>
-          <div class="hint">교과(열)별로 시수를 합산합니다.</div>
+          <h2 class="h2">3) 교과별 시수 합계(결과)</h2>
+          <div class="hint">교과별로 합계를 계산하고 편제 대비 차이를 확인합니다.</div>
         </div>
         <div class="tableWrap">
           <table class="table" aria-label="교과별 시수 합계">
@@ -155,13 +175,44 @@
 
       <section class="card">
         <div class="cardHead">
-          <h2 class="h2">원본 미리보기</h2>
-          <div class="hint">인식된 헤더/데이터가 맞는지 확인하세요.</div>
+          <h2 class="h2">2) 과목별 교육과정 요약</h2>
+          <div class="hint">입력한 성취기준/성취수준을 과목별로 정리합니다.</div>
         </div>
-        <div class="tableWrap" id="previewWrap">
-          <div class="muted">파일을 업로드하면 미리보기가 표시됩니다.</div>
+        <div class="tableWrap">
+          <table class="table" aria-label="과목별 교육과정 요약">
+            <thead>
+              <tr>
+                <th>과목</th>
+                <th>성취기준(핵심내용)</th>
+                <th style="width:120px;">성취수준</th>
+              </tr>
+            </thead>
+            <tbody id="curriculumBody">
+              <tr><td colspan="3" class="muted">과목별 교육과정 입력란을 채우면 표시됩니다.</td></tr>
+            </tbody>
+          </table>
         </div>
       </section>
+    </section>
+
+    <section class="card" style="margin-top:14px;">
+      <div class="cardHead">
+        <h2 class="h2">3) 연간 시간표 (주차별)</h2>
+        <div class="hint">선택한 학년(군) 기준으로 주차-과목별 시수를 집계합니다.</div>
+      </div>
+      <div class="tableWrap" id="timetableWrap">
+        <div class="muted">파일을 업로드하면 연간 시간표가 표시됩니다.</div>
+      </div>
+    </section>
+
+    <section class="card" style="margin-top:14px;">
+      <div class="cardHead">
+        <h2 class="h2">원본 미리보기</h2>
+        <div class="hint">인식된 헤더/데이터가 맞는지 확인하세요.</div>
+      </div>
+      <div class="tableWrap" id="previewWrap">
+        <div class="muted">파일을 업로드하면 미리보기가 표시됩니다.</div>
+      </div>
     </section>
 
     <footer class="footer">

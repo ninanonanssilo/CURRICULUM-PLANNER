@@ -28,14 +28,18 @@ const els = {
   file: $("file"),
   sheet: $("sheet"),
   rangePolicy: $("rangePolicy"),
+  gradeBand: $("gradeBand"),
   gradeFilter: $("gradeFilter"),
   subjectPlan: $("subjectPlan"),
+  subjectCurriculum: $("subjectCurriculum"),
   btnTotals: $("btnTotals"),
   btnCSV: $("btnCSV"),
   btnDocx: $("btnDocx"),
   schoolYear: $("schoolYear"),
   status: $("status"),
   totalsBody: $("totalsBody"),
+  curriculumBody: $("curriculumBody"),
+  timetableWrap: $("timetableWrap"),
   previewWrap: $("previewWrap"),
   toast: $("toast"),
 };
@@ -230,10 +234,123 @@ function parseSubjectPlan(text){
   return map;
 }
 
-function filterByGrade(objs, grade){
+function bandGrades(band){
+  if (band === "1-2") return ["1","2"];
+  if (band === "3-4") return ["3","4"];
+  if (band === "5-6") return ["5","6"];
+  return [];
+}
+
+function syncGradeOptions(){
+  const band = String(els.gradeBand?.value || "");
+  const all = ["1","2","3","4","5","6"];
+  const allow = bandGrades(band);
+  const options = (allow.length ? allow : all).map(g=>`<option value="${g}">${g}학년</option>`).join("");
+  const current = String(els.gradeFilter?.value || "");
+  if (els.gradeFilter){
+    els.gradeFilter.innerHTML = `<option value="">${band ? "학년군 전체" : "전체 학년"}</option>` + options;
+    if ((allow.length && !allow.includes(current)) || (!allow.length && current && !all.includes(current))) {
+      els.gradeFilter.value = "";
+    } else {
+      els.gradeFilter.value = current;
+    }
+  }
+}
+
+function filterByGrade(objs, band, grade){
   const g = String(grade || "").trim();
-  if (!g) return objs;
-  return objs.filter(o => String(o.grade || "").trim() === g);
+  const b = String(band || "").trim();
+  if (g) return objs.filter(o => String(o.grade || "").trim() === g);
+  const allow = bandGrades(b);
+  if (!allow.length) return objs;
+  return objs.filter(o => allow.includes(String(o.grade || "").trim()));
+}
+
+function parseSubjectCurriculum(text){
+  return String(text || "").split(/\r?\n/).map(line=>{
+    const t = line.trim();
+    if (!t) return null;
+    const parts = t.split(/[|｜]/).map(x=>x.trim());
+    if (!parts[0]) return null;
+    return {
+      subject: parts[0] || "",
+      achievement: parts[1] || "",
+      level: parts[2] || ""
+    };
+  }).filter(Boolean);
+}
+
+function renderCurriculum(rows){
+  const body = els.curriculumBody;
+  if (!body) return;
+  body.innerHTML = "";
+  if (!rows.length){
+    body.innerHTML = `<tr><td colspan="3" class="muted">과목별 교육과정 입력란을 채우면 표시됩니다.</td></tr>`;
+    return;
+  }
+  for (const r of rows){
+    const tr = document.createElement("tr");
+    tr.innerHTML = `<td>${escapeHtml(r.subject)}</td><td>${escapeHtml(r.achievement)}</td><td>${escapeHtml(r.level)}</td>`;
+    body.appendChild(tr);
+  }
+}
+
+function renderAnnualTimetable(objs, policy){
+  const wrap = els.timetableWrap;
+  if (!wrap) return;
+  if (!objs.length){
+    wrap.innerHTML = `<div class="muted">선택한 조건에 해당하는 데이터가 없습니다.</div>`;
+    return;
+  }
+
+  const subjects = Array.from(new Set(objs.map(o=>(o.subject||"").trim()).filter(Boolean))).sort((a,b)=>a.localeCompare(b,'ko-KR'));
+  const weekMap = new Map();
+
+  for (const o of objs){
+    const w = String(o.week || "").trim() || "미지정";
+    const s = String(o.subject || "").trim();
+    if (!s) continue;
+    const h = parseHourCell(o.hoursRaw, policy) || 0;
+    if (!weekMap.has(w)) weekMap.set(w, new Map());
+    const m = weekMap.get(w);
+    m.set(s, (m.get(s) || 0) + h);
+  }
+
+  const weekKeys = Array.from(weekMap.keys()).sort((a,b)=>{
+    const na = Number(String(a).replace(/[^0-9.\-]/g, ""));
+    const nb = Number(String(b).replace(/[^0-9.\-]/g, ""));
+    const fa = Number.isFinite(na), fb = Number.isFinite(nb);
+    if (fa && fb) return na - nb;
+    if (fa) return -1;
+    if (fb) return 1;
+    return a.localeCompare(b,'ko-KR');
+  });
+
+  const table = document.createElement("table");
+  table.className = "table";
+  const thead = document.createElement("thead");
+  const headRow = document.createElement("tr");
+  headRow.innerHTML = `<th>주차</th>${subjects.map(s=>`<th style="text-align:right;">${escapeHtml(s)}</th>`).join("")}<th style="text-align:right;">합계</th>`;
+  thead.appendChild(headRow);
+  table.appendChild(thead);
+
+  const tbody = document.createElement("tbody");
+  for (const wk of weekKeys){
+    const rowMap = weekMap.get(wk);
+    let sum = 0;
+    const tr = document.createElement("tr");
+    const cells = subjects.map(s=>{
+      const v = Math.round(((rowMap.get(s) || 0) + Number.EPSILON) * 10) / 10;
+      sum += v;
+      return `<td style="text-align:right;">${v ? v : ""}</td>`;
+    }).join("");
+    tr.innerHTML = `<td>${escapeHtml(wk)}</td>${cells}<td style="text-align:right; font-weight:700;">${Math.round(sum*10)/10}</td>`;
+    tbody.appendChild(tr);
+  }
+
+  table.appendChild(tbody);
+  wrap.innerHTML = "";
+  wrap.appendChild(table);
 }
 
 function computeTotals(objs, policy, planMap) {
@@ -447,16 +564,21 @@ function applyTotals(){
   if (!state.rows || !state.headerMap) return null;
 
   const policy = els.rangePolicy?.value || "avg";
+  const gradeBand = String(els.gradeBand?.value || "").trim();
   const grade = String(els.gradeFilter?.value || "").trim();
   const planMap = parseSubjectPlan(els.subjectPlan?.value || "");
 
   const objsAll = rowsToObjects(state.rows, state.headerMap);
-  const objs = filterByGrade(objsAll, grade);
+  const objs = filterByGrade(objsAll, gradeBand, grade);
   const { out, badHours, totalRows } = computeTotals(objs, policy, planMap);
   state.lastTotals = out;
 
   renderTotals(out);
-  const gradeLabel = grade ? `${grade}학년 / ` : "";
+  renderCurriculum(parseSubjectCurriculum(els.subjectCurriculum?.value || ""));
+  renderAnnualTimetable(objs, policy);
+
+  const bandLabel = gradeBand ? `${gradeBand}학년군 / ` : "";
+  const gradeLabel = grade ? `${grade}학년 / ` : bandLabel;
   if (badHours) {
     setStatus(`완료: ${gradeLabel}${out.length}개 교과 합산. 시수 파싱 실패 ${badHours}건(총 ${totalRows}행).`, { error: true });
   } else {
@@ -488,9 +610,10 @@ async function downloadDOCX(){
   const { Document, Packer, Paragraph, TextRun, Table, TableRow, TableCell, WidthType, AlignmentType, HeadingLevel } = window.docx;
 
   const policy = els.rangePolicy?.value || "avg";
+  const gradeBand = String(els.gradeBand?.value || "").trim();
   const gradeSelected = String(els.gradeFilter?.value || "").trim();
   const objsAll = rowsToObjects(state.rows, state.headerMap);
-  const objs = filterByGrade(objsAll, gradeSelected);
+  const objs = filterByGrade(objsAll, gradeBand, gradeSelected);
 
   // sort: week -> subject (requested)
   const numOrInf = (s)=>{
@@ -568,14 +691,20 @@ async function downloadDOCX(){
   a.remove();
 }
 
-[els.rangePolicy, els.gradeFilter].forEach((el)=>{
+[els.rangePolicy, els.gradeBand, els.gradeFilter].forEach((el)=>{
   el?.addEventListener('change', ()=>{
+    if (el === els.gradeBand) syncGradeOptions();
     if (state.rows && state.headerMap) applyTotals();
   });
 });
-els.subjectPlan?.addEventListener('input', ()=>{
-  if (state.rows && state.headerMap) applyTotals();
+[els.subjectPlan, els.subjectCurriculum].forEach((el)=>{
+  el?.addEventListener('input', ()=>{
+    if (state.rows && state.headerMap) applyTotals();
+  });
 });
+
+syncGradeOptions();
+renderCurriculum(parseSubjectCurriculum(els.subjectCurriculum?.value || ""));
 
 els.btnDocx?.addEventListener('click', ()=>{
   downloadDOCX().catch(()=>toast('DOCX 생성에 실패했습니다.', 2400));
