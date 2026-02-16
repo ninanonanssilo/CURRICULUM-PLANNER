@@ -146,15 +146,41 @@
           <input id="termStartDate" class="input" type="date" />
           <div class="hint">주차(1,2,3...)를 실제 날짜와 매핑할 기준일</div>
         </label>
-        <label class="field" style="flex:1;">
-          <span class="label">2) 학사 일정 입력 (학교별, 공휴일/대체공휴일 포함)</span>
-          <textarea id="schoolSchedule" class="input" rows="4" placeholder="예:
-2026-03-02,개학
-2026-05-05,공휴일,어린이날
-2026-05-06,대체공휴일
-2026-10-02,재량휴업"></textarea>
-          <div class="hint">형식: 날짜,유형,메모. 유형이 공휴일/대체공휴일/재량휴업/방학/시험이면 수업일에서 제외합니다.</div>
-        </label>
+
+        <div class="field" style="flex:1; min-width:280px;">
+          <span class="label">2) 학사 일정 추가</span>
+          <div class="row" style="gap:8px; align-items:flex-end;">
+            <label class="field" style="min-width:150px; max-width:180px; margin:0;">
+              <span class="label">날짜</span>
+              <input id="scheduleDate" class="input" type="date" />
+            </label>
+            <label class="field" style="min-width:150px; max-width:190px; margin:0;">
+              <span class="label">유형</span>
+              <select id="scheduleType" class="select">
+                <option value="공휴일">공휴일</option>
+                <option value="대체공휴일">대체공휴일</option>
+                <option value="휴업일">휴업일</option>
+                <option value="재량휴업">재량휴업</option>
+                <option value="시험">시험</option>
+                <option value="행사">행사</option>
+                <option value="개학">개학</option>
+                <option value="기타">기타</option>
+              </select>
+            </label>
+            <label class="field" style="flex:1; min-width:180px; margin:0;">
+              <span class="label">메모</span>
+              <input id="scheduleMemo" class="input" type="text" placeholder="예: 어린이날" />
+            </label>
+            <div class="btns" style="margin:0;">
+              <button id="btnAddSchedule" class="btn" type="button">일정 추가</button>
+            </div>
+          </div>
+          <div class="btns" style="margin-top:8px;">
+            <button id="btnLoadNational" class="btn ghost" type="button">국가공휴일 자동 불러오기</button>
+            <button id="btnClearSchedule" class="btn ghost" type="button">학사 일정 비우기</button>
+          </div>
+          <div class="hint">국가공휴일 자동 불러오기로 해당 연도 공휴일/대체공휴일을 기본 반영하고, 학교 일정은 직접 추가하세요.</div>
+        </div>
       </div>
 
       <div class="row" style="margin-top:10px; align-items:flex-end;">
@@ -183,7 +209,7 @@
         <div class="helpSteps">
           <div><b>과목별 편제 시수</b><br/>국어: 120<br/>수학: 136<br/>사회: 68</div>
           <div><b>과목별 교육과정</b><br/>국어 | 듣기·말하기 성취기준 | 기본<br/>수학 | 수와 연산 성취기준 | 심화</div>
-          <div><b>학사 일정</b><br/>2026-05-05,공휴일,어린이날<br/>2026-05-06,대체공휴일<br/>2026-10-02,재량휴업</div>
+          <div><b>학사 일정</b><br/>날짜 선택 → 유형 선택(공휴일/대체공휴일/휴업일 등) → 메모 입력 후 [일정 추가]<br/>또는 [국가공휴일 자동 불러오기] 클릭</div>
         </div>
       </details>
     </section>
@@ -251,8 +277,8 @@
       </div>
       <div class="tableWrap">
         <table class="table" aria-label="학사 일정 요약">
-          <thead><tr><th style="width:140px;">날짜</th><th style="width:180px;">유형</th><th>메모</th></tr></thead>
-          <tbody id="scheduleBody"><tr><td colspan="3" class="muted">학사 일정을 입력하면 표시됩니다.</td></tr></tbody>
+          <thead><tr><th style="width:140px;">날짜</th><th style="width:180px;">유형</th><th>메모</th><th style="width:90px;">관리</th></tr></thead>
+          <tbody id="scheduleBody"><tr><td colspan="4" class="muted">학사 일정을 추가하면 표시됩니다.</td></tr></tbody>
         </table>
       </div>
     </section>

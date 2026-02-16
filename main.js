@@ -33,7 +33,12 @@ const els = {
   subjectPlan: $("subjectPlan"),
   subjectCurriculum: $("subjectCurriculum"),
   termStartDate: $("termStartDate"),
-  schoolSchedule: $("schoolSchedule"),
+  scheduleDate: $("scheduleDate"),
+  scheduleType: $("scheduleType"),
+  scheduleMemo: $("scheduleMemo"),
+  btnAddSchedule: $("btnAddSchedule"),
+  btnLoadNational: $("btnLoadNational"),
+  btnClearSchedule: $("btnClearSchedule"),
   btnTotals: $("btnTotals"),
   btnCSV: $("btnCSV"),
   btnDocx: $("btnDocx"),
@@ -60,6 +65,7 @@ const state = {
   headerMap: null,
   activeSheet: null,
   lastTotals: null,
+  scheduleRows: [],
 };
 
 function toast(msg, ms = 1800) {
@@ -89,7 +95,7 @@ function setStatus(msg, { error = false } = {}) {
 
 const guideSteps = [
   { title: "1단계 · 기본 설정", body: "학년도, 학년군, 학년을 먼저 고르면 이후 계산 결과가 정확해집니다.", target: "schoolYear" },
-  { title: "2단계 · 학사 일정", body: "학기 시작일과 공휴일/대체공휴일/재량휴업을 입력하면 주차별 수업가능일이 자동 반영됩니다.", target: "schoolSchedule" },
+  { title: "2단계 · 학사 일정", body: "학기 시작일과 공휴일/대체공휴일/휴업일을 선택형으로 추가하면 주차별 수업가능일이 자동 반영됩니다.", target: "scheduleDate" },
   { title: "3단계 · 편제 시수", body: "총론 기준 과목별 편제 시수를 입력하면 합계표에서 편제 대비 차이를 바로 볼 수 있습니다.", target: "subjectPlan" },
   { title: "4단계 · 과목별 교육과정", body: "과목 | 성취기준 | 성취수준 형식으로 넣으면 요약표가 자동 생성됩니다.", target: "subjectCurriculum" },
   { title: "5단계 · 파일 업로드", body: "xlsx를 올리고 시트를 선택하면 원본 데이터를 자동 인식합니다.", target: "file" },
@@ -352,19 +358,25 @@ function renderCurriculum(rows){
   }
 }
 
-function parseSchoolSchedule(text){
-  const offKeys = ["공휴일","대체공휴일","재량휴업","방학","시험"];
-  return String(text || "").split(/\r?\n/).map(line=>{
-    const t = line.trim();
-    if (!t) return null;
-    const parts = t.split(",").map(x=>x.trim());
-    const date = parts[0] || "";
-    const type = parts[1] || "";
-    const memo = parts.slice(2).join(",");
-    if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) return null;
-    const isOff = offKeys.some(k => type.includes(k));
-    return { date, type, memo, isOff };
-  }).filter(Boolean);
+function isOffType(type){
+  const offKeys = ["공휴일","대체공휴일","휴업일","재량휴업","방학","시험"];
+  return offKeys.some(k => String(type || "").includes(k));
+}
+
+function normalizeScheduleRows(rows){
+  const map = new Map();
+  for (const r of (rows || [])){
+    if (!r?.date || !/^\d{4}-\d{2}-\d{2}$/.test(r.date)) continue;
+    const key = `${r.date}|${r.type || ""}|${r.memo || ""}`;
+    if (map.has(key)) continue;
+    map.set(key, {
+      date: r.date,
+      type: r.type || "기타",
+      memo: r.memo || "",
+      isOff: isOffType(r.type || "")
+    });
+  }
+  return Array.from(map.values()).sort((a,b)=>a.date.localeCompare(b.date) || a.type.localeCompare(b.type,'ko-KR'));
 }
 
 function renderSchedule(rows){
@@ -372,15 +384,14 @@ function renderSchedule(rows){
   if (!body) return;
   body.innerHTML = "";
   if (!rows.length){
-    body.innerHTML = `<tr><td colspan="3" class="muted">학사 일정을 입력하면 표시됩니다.</td></tr>`;
+    body.innerHTML = `<tr><td colspan="4" class="muted">학사 일정을 추가하면 표시됩니다.</td></tr>`;
     return;
   }
-  const sorted = rows.slice().sort((a,b)=>a.date.localeCompare(b.date));
-  for (const r of sorted){
+  rows.forEach((r, idx)=>{
     const tr = document.createElement("tr");
-    tr.innerHTML = `<td>${escapeHtml(r.date)}</td><td>${escapeHtml(r.type)}</td><td>${escapeHtml(r.memo || "")}</td>`;
+    tr.innerHTML = `<td>${escapeHtml(r.date)}</td><td>${escapeHtml(r.type)}</td><td>${escapeHtml(r.memo || "")}</td><td><button type="button" class="btn ghost" data-del-schedule="${idx}" style="padding:6px 10px;">삭제</button></td>`;
     body.appendChild(tr);
-  }
+  });
 }
 
 function addDays(date, n){
@@ -676,7 +687,7 @@ function applyTotals(){
   const gradeBand = String(els.gradeBand?.value || "").trim();
   const grade = String(els.gradeFilter?.value || "").trim();
   const planMap = parseSubjectPlan(els.subjectPlan?.value || "");
-  const scheduleRows = parseSchoolSchedule(els.schoolSchedule?.value || "");
+  const scheduleRows = state.scheduleRows || [];
   const termStartDate = els.termStartDate?.value || "";
 
   const objsAll = rowsToObjects(state.rows, state.headerMap);
@@ -803,16 +814,67 @@ async function downloadDOCX(){
   a.remove();
 }
 
+function refreshSchedule(rows){
+  state.scheduleRows = normalizeScheduleRows(rows);
+  renderSchedule(state.scheduleRows);
+  if (state.rows && state.headerMap) applyTotals();
+}
+
+function addScheduleFromInputs(){
+  const date = String(els.scheduleDate?.value || "").trim();
+  const type = String(els.scheduleType?.value || "기타").trim() || "기타";
+  const memo = String(els.scheduleMemo?.value || "").trim();
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(date)){
+    toast("날짜를 먼저 선택해 주세요.", 1800);
+    return;
+  }
+  refreshSchedule([...(state.scheduleRows || []), {date, type, memo, isOff: isOffType(type)}]);
+  if (els.scheduleMemo) els.scheduleMemo.value = "";
+}
+
+async function loadNationalHolidays(){
+  const y = Number(els.schoolYear?.value || new Date().getFullYear());
+  try {
+    setStatus("국가공휴일을 불러오는 중...");
+    const res = await fetch(`https://date.nager.at/api/v3/PublicHolidays/${y}/KR`);
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    const arr = await res.json();
+    const rows = (Array.isArray(arr) ? arr : []).map(x=>{
+      const name = String(x.localName || x.name || "공휴일");
+      const t = /(대체|대체휴일|Alternative|Substitute)/i.test(name) ? "대체공휴일" : "공휴일";
+      return { date: x.date, type: t, memo: name, isOff: true };
+    });
+    refreshSchedule([...(state.scheduleRows || []), ...rows]);
+    setStatus(`국가공휴일 ${rows.length}건을 반영했습니다.`);
+    toast("국가공휴일 자동 반영 완료", 1800);
+  } catch (e) {
+    setStatus("국가공휴일 자동 불러오기에 실패했습니다. 직접 입력해 주세요.", { error: true });
+    toast("공휴일 자동 불러오기 실패", 2000);
+  }
+}
+
+els.btnAddSchedule?.addEventListener('click', addScheduleFromInputs);
+els.btnClearSchedule?.addEventListener('click', ()=>refreshSchedule([]));
+els.btnLoadNational?.addEventListener('click', ()=>{ loadNationalHolidays(); });
+els.scheduleBody?.addEventListener('click', (e)=>{
+  const btn = e.target.closest('[data-del-schedule]');
+  if (!btn) return;
+  const idx = Number(btn.getAttribute('data-del-schedule'));
+  if (!Number.isFinite(idx)) return;
+  const next = state.scheduleRows.slice();
+  next.splice(idx, 1);
+  refreshSchedule(next);
+});
+
 [els.rangePolicy, els.gradeBand, els.gradeFilter].forEach((el)=>{
   el?.addEventListener('change', ()=>{
     if (el === els.gradeBand) syncGradeOptions();
     if (state.rows && state.headerMap) applyTotals();
   });
 });
-[els.subjectPlan, els.subjectCurriculum, els.schoolSchedule].forEach((el)=>{
+[els.subjectPlan, els.subjectCurriculum].forEach((el)=>{
   el?.addEventListener('input', ()=>{
     if (state.rows && state.headerMap) applyTotals();
-    else if (el === els.schoolSchedule) renderSchedule(parseSchoolSchedule(els.schoolSchedule?.value || ""));
   });
 });
 els.termStartDate?.addEventListener('change', ()=>{
@@ -821,7 +883,7 @@ els.termStartDate?.addEventListener('change', ()=>{
 
 syncGradeOptions();
 renderCurriculum(parseSubjectCurriculum(els.subjectCurriculum?.value || ""));
-renderSchedule(parseSchoolSchedule(els.schoolSchedule?.value || ""));
+renderSchedule(state.scheduleRows);
 if (els.termStartDate && !els.termStartDate.value){
   const y = Number(els.schoolYear?.value || new Date().getFullYear());
   els.termStartDate.value = `${y}-03-02`;
