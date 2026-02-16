@@ -45,6 +45,13 @@ const els = {
   scheduleBody: $("scheduleBody"),
   previewWrap: $("previewWrap"),
   toast: $("toast"),
+  btnGuide: $("btnGuide"),
+  guideOverlay: $("guideOverlay"),
+  guideStep: $("guideStep"),
+  guideTitle: $("guideTitle"),
+  guideBody: $("guideBody"),
+  btnGuideNext: $("btnGuideNext"),
+  btnGuideSkip: $("btnGuideSkip"),
 };
 
 const state = {
@@ -78,6 +85,53 @@ function setStatus(msg, { error = false } = {}) {
   el.textContent = t;
   el.classList.add("show");
   el.classList.toggle("is-error", !!error);
+}
+
+const guideSteps = [
+  { title: "1단계 · 기본 설정", body: "학년도, 학년군, 학년을 먼저 고르면 이후 계산 결과가 정확해집니다.", target: "schoolYear" },
+  { title: "2단계 · 학사 일정", body: "학기 시작일과 공휴일/대체공휴일/재량휴업을 입력하면 주차별 수업가능일이 자동 반영됩니다.", target: "schoolSchedule" },
+  { title: "3단계 · 편제 시수", body: "총론 기준 과목별 편제 시수를 입력하면 합계표에서 편제 대비 차이를 바로 볼 수 있습니다.", target: "subjectPlan" },
+  { title: "4단계 · 과목별 교육과정", body: "과목 | 성취기준 | 성취수준 형식으로 넣으면 요약표가 자동 생성됩니다.", target: "subjectCurriculum" },
+  { title: "5단계 · 파일 업로드", body: "xlsx를 올리고 시트를 선택하면 원본 데이터를 자동 인식합니다.", target: "file" },
+  { title: "6단계 · 결과 확인", body: "교과별 시수 합계와 연간 시간표(수업가능일 포함)를 확인하세요.", target: "timetableWrap" },
+  { title: "7단계 · 다운로드", body: "확인이 끝나면 CSV/DOCX로 내려받아 학년별 업무자료로 활용하면 됩니다.", target: "btnCSV" },
+];
+let guideIndex = 0;
+let guideFocusedEl = null;
+
+function clearGuideFocus(){
+  if (guideFocusedEl) guideFocusedEl.classList.remove('guideFocus');
+  guideFocusedEl = null;
+}
+function showGuideStep(){
+  if (!els.guideOverlay) return;
+  const step = guideSteps[guideIndex];
+  if (!step) return;
+
+  els.guideStep.textContent = `${guideIndex + 1} / ${guideSteps.length}`;
+  els.guideTitle.textContent = step.title;
+  els.guideBody.textContent = step.body;
+
+  clearGuideFocus();
+  const target = document.getElementById(step.target);
+  if (target){
+    guideFocusedEl = target;
+    target.classList.add('guideFocus');
+    target.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  }
+
+  els.btnGuideNext.textContent = (guideIndex === guideSteps.length - 1) ? '완료' : 'OK';
+}
+function closeGuide(){
+  els.guideOverlay?.classList.remove('show');
+  els.guideOverlay?.setAttribute('aria-hidden', 'true');
+  clearGuideFocus();
+}
+function openGuide(){
+  guideIndex = 0;
+  els.guideOverlay?.classList.add('show');
+  els.guideOverlay?.setAttribute('aria-hidden', 'false');
+  showGuideStep();
 }
 
 function normalizeKey(s) {
@@ -772,6 +826,20 @@ if (els.termStartDate && !els.termStartDate.value){
   const y = Number(els.schoolYear?.value || new Date().getFullYear());
   els.termStartDate.value = `${y}-03-02`;
 }
+
+els.btnGuide?.addEventListener('click', openGuide);
+els.btnGuideSkip?.addEventListener('click', closeGuide);
+els.btnGuideNext?.addEventListener('click', ()=>{
+  if (guideIndex >= guideSteps.length - 1) { closeGuide(); return; }
+  guideIndex++;
+  showGuideStep();
+});
+els.guideOverlay?.addEventListener('click', (e)=>{
+  if (e.target === els.guideOverlay) closeGuide();
+});
+document.addEventListener('keydown', (e)=>{
+  if (e.key === 'Escape' && els.guideOverlay?.classList.contains('show')) closeGuide();
+});
 
 els.btnDocx?.addEventListener('click', ()=>{
   downloadDOCX().catch(()=>toast('DOCX 생성에 실패했습니다.', 2400));
