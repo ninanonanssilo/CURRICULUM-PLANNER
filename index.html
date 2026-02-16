@@ -56,23 +56,26 @@
   <main class="page">
     <section class="card">
       <details class="help" open>
-        <summary>사용 안내</summary>
+        <summary>사용 안내 (권장 순서)</summary>
         <div class="helpSteps">
-          <div>1) <b>엑셀(xlsx)</b> 파일을 업로드하세요. (구글시트는 <b>파일 → 다운로드 → Microsoft Excel(.xlsx)</b>)</div>
-          <div>2) 시트의 헤더(예: 주차/학년/학기/교과/단원/학습주제/시수)를 자동 인식합니다.</div>
-          <div>3) 교과별 시수 합계를 계산하고, 필요하면 CSV로 내려받을 수 있습니다.</div>
+          <div>1) <b>기본 설정</b>: 학년도 → 학년군 → 학년을 선택합니다.</div>
+          <div>2) <b>학사 일정</b>: 학기 시작일, 공휴일/대체공휴일/휴업일을 입력합니다.</div>
+          <div>3) <b>총론 기반 편제</b>: 과목별 편제 시수를 입력합니다.</div>
+          <div>4) <b>과목별 교육과정</b>: 성취기준/성취수준을 입력합니다.</div>
+          <div>5) <b>원본 데이터</b>: 엑셀(xlsx) 업로드 후 시트를 선택합니다.</div>
+          <div>6) <b>결과 확인/다운로드</b>: 시수 합계 + 연간 시간표를 확인하고 CSV/DOCX로 내려받습니다.</div>
         </div>
       </details>
 
       <div class="row" style="margin-top:12px;">
         <label class="field" style="max-width:180px;">
-          <span class="label">학년도</span>
+          <span class="label">1) 학년도</span>
           <input id="schoolYear" class="input" type="number" min="2000" max="2100" value="2026" />
           <div class="hint">문서 제목에 사용</div>
         </label>
 
         <label class="field" style="max-width:180px;">
-          <span class="label">학년군 선택</span>
+          <span class="label">1) 학년군 선택</span>
           <select id="gradeBand" class="select">
             <option value="" selected>전체 학년군</option>
             <option value="1-2">1~2학년군</option>
@@ -83,7 +86,7 @@
         </label>
 
         <label class="field" style="max-width:180px;">
-          <span class="label">학년 선택</span>
+          <span class="label">1) 학년 선택</span>
           <select id="gradeFilter" class="select">
             <option value="" selected>전체 학년</option>
             <option value="1">1학년</option>
@@ -97,7 +100,7 @@
         </label>
 
         <label class="field" style="flex:1;">
-          <span class="label">파일 업로드 (xlsx)</span>
+          <span class="label">5) 파일 업로드 (xlsx)</span>
           <input id="file" class="input" type="file" accept=".xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" />
           <div class="hint">업로드한 파일은 서버로 전송되지 않고 <b>브라우저에서만</b> 처리됩니다.</div>
         </label>
@@ -133,12 +136,12 @@
 
       <div class="row" style="margin-top:10px; align-items:flex-end;">
         <label class="field" style="max-width:220px;">
-          <span class="label">학기 시작일</span>
+          <span class="label">2) 학기 시작일</span>
           <input id="termStartDate" class="input" type="date" />
           <div class="hint">주차(1,2,3...)를 실제 날짜와 매핑할 기준일</div>
         </label>
         <label class="field" style="flex:1;">
-          <span class="label">학사 일정 입력 (학교별, 공휴일/대체공휴일 포함)</span>
+          <span class="label">2) 학사 일정 입력 (학교별, 공휴일/대체공휴일 포함)</span>
           <textarea id="schoolSchedule" class="input" rows="4" placeholder="예:
 2026-03-02,개학
 2026-05-05,공휴일,어린이날
@@ -150,7 +153,7 @@
 
       <div class="row" style="margin-top:10px; align-items:flex-end;">
         <label class="field" style="flex:1;">
-          <span class="label">시트 선택</span>
+          <span class="label">5) 시트 선택</span>
           <select id="sheet" class="select" disabled>
             <option value="">파일을 먼저 업로드하세요</option>
           </select>
